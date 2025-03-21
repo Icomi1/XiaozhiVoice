@@ -27,19 +27,24 @@ if int(args.gpu) < 0:
 else:
     device = torch.device("cuda:{}".format(args.gpu))
 
-# 加载模型并确保在正确的设备上
-try:
-    model = torch.jit.load(args.model_path, map_location=device)
-    model.to(device)
-    model.eval()
-except Exception as e:
-    print(f"模型加载错误: {str(e)}")
-    print("尝试使用CPU加载模型...")
-    device = torch.device("cpu")
-    model = torch.jit.load(args.model_path, map_location=device)
-    model.to(device)
-    model.eval()
 
+
+model = torch.jit.load(args.model_path)
+model.to(device)
+model.eval()
+#-----------------------------------------------------------------
+# try:
+#     model = torch.jit.load(args.model_path, map_location=device)
+#     model.to(device)
+#     model.eval()
+# except Exception as e:
+#     print(f"模型加载错误: {str(e)}")
+#     print("尝试使用CPU加载模型...")
+#     device = torch.device("cpu")
+#     model = torch.jit.load(args.model_path, map_location=device)
+#     model.to(device)
+#     model.eval()
+#-----------------------------------------------------------
 person_feature = []
 person_name = []
 
