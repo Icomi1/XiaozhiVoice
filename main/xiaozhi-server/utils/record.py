@@ -1,6 +1,6 @@
 import wave
-
 import pyaudio
+import os
 
 
 class RecordAudio:
@@ -11,6 +11,9 @@ class RecordAudio:
         self.channels = 1
         self.rate = 16000
 
+        # 确保tmp目录存在
+        os.makedirs('tmp', exist_ok=True)
+
         # 打开录音
         self.p = pyaudio.PyAudio()
         self.stream = self.p.open(format=self.format,
@@ -19,7 +22,7 @@ class RecordAudio:
                                   input=True,
                                   frames_per_buffer=self.chunk)
 
-    def record(self, output_path="SpeakerDatabase/temp.wav", record_seconds=3, wait=True):
+    def record(self, output_path="tmp/temp.wav", record_seconds=3, wait=True):
         """
         录音
         :param output_path: 录音保存的路径，后缀名为wav

@@ -10,14 +10,21 @@ from utils.reader import load_audio
 from utils.record import RecordAudio
 from utils.utility import add_arguments, print_arguments
 
+# 初始化全局变量
+person_feature = []
+person_name = []
+
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('gpu',              str,    '-1',                      '测试使用的GPU序号')
-add_arg('input_shape',      str,    '(1, 257, 257)',          '数据输入的形状')
-add_arg('threshold',        float,   0.67,                    '判断是否为同一个人的阈值')
-add_arg('speakerdatabase',         str,    'SpeakerDatabase',               '音频库的路径')
-add_arg('model_path',       str,    'Models/resnet34_zhaidatatang_2w_th67.pth',    '预测模型的路径')
+add_arg('gpu', str, '-1', '测试使用的GPU序号')
+add_arg('input_shape', str, '(1, 257, 257)', '数据输入的形状')
+add_arg('threshold', float, 0.67, '判断是否为同一个人的阈值')
+add_arg('speakerdatabase', str, 'tmp', '音频库的路径')
+add_arg('model_path', str, 'Models/resnet34_zhaidatatang_2w_th67.pth', '预测模型的路径')
 args = parser.parse_args()
+
+# 确保tmp目录存在
+os.makedirs('tmp', exist_ok=True)
 
 print_arguments(args)
 
@@ -27,11 +34,6 @@ if int(args.gpu) < 0:
 else:
     device = torch.device("cuda:{}".format(args.gpu))
 
-
-
-model = torch.jit.load(args.model_path)
-model.to(device)
-model.eval()
 #-----------------------------------------------------------------
 # try:
 #     model = torch.jit.load(args.model_path, map_location=device)
@@ -45,8 +47,18 @@ model.eval()
 #     model.to(device)
 #     model.eval()
 #-----------------------------------------------------------
-person_feature = []
-person_name = []
+# 加载模型
+try:
+    model = torch.jit.load(args.model_path, map_location=device)
+    model.to(device)
+    model.eval()
+except Exception as e:
+    print(f"模型加载错误: {str(e)}")
+    print("尝试使用CPU加载模型...")
+    device = torch.device("cpu")
+    model = torch.jit.load(args.model_path, map_location=device)
+    model.to(device)
+    model.eval()
 
 
 def infer(audio_path):
@@ -61,14 +73,26 @@ def infer(audio_path):
 
 # 加载要识别的音频库
 def load_audio_db(audio_db_path):
+    if not os.path.exists(audio_db_path):
+        print(f"音频库目录 {audio_db_path} 不存在")
+        return
+
     audios = os.listdir(audio_db_path)
     for audio in audios:
+        # 只处理音频文件
+        if not audio.lower().endswith(('.wav', '.mp3', '.ogg')):
+            continue
+
         path = os.path.join(audio_db_path, audio)
-        name = audio[:-4]
-        feature = infer(path)[0]
-        person_name.append(name)
-        person_feature.append(feature)
-        print("Loaded %s audio." % name)
+        try:
+            name = os.path.splitext(audio)[0]  # 使用splitext更安全
+            feature = infer(path)[0]
+            person_name.append(name)
+            person_feature.append(feature)
+            print("Loaded %s audio." % name)
+        except Exception as e:
+            print(f"处理音频文件 {audio} 时出错: {str(e)}")
+            continue
 
 
 def recognition(path):
