@@ -155,3 +155,14 @@ pip uninstall torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
+
+
+
+
+如何切换CPUorGPU训练？
+
+main/xiaozhi-server/infer_recognition.py
+
+![image-20250321234202239](assets/image-20250321234202239.png)
+
+若要切换成CPU，则可以尝试将蓝色的代码注释掉，红色的代码取消注释
