@@ -1,4 +1,5 @@
 import traceback
+from typing import Any
 
 from ..base import MemoryProviderBase, logger
 from mem0 import MemoryClient
@@ -11,24 +12,42 @@ class MemoryProvider(MemoryProviderBase):
         super().__init__(config)
         self.api_key = config.get("api_key", "")
         self.api_version = config.get("api_version", "v1.1")
+        self.user_id = None  # 初始化为 None
+        self.current_user_id = "test1" # 初始化 current_user_id
+        self.use_mem0 = False
+        self.client = None
+        
+        # 检查 API key
         have_key = check_model_key("Mem0ai", self.api_key)
-        if not have_key :
-            self.use_mem0 = False
+        if not have_key:
+            logger.bind(tag=TAG).warning("未配置 Mem0ai API key")
             return
-        else:
-            self.use_mem0 = True
+            
         try:
             self.client = MemoryClient(api_key=self.api_key)
+            self.use_mem0 = True
             logger.bind(tag=TAG).info("成功连接到 Mem0ai 服务")
         except Exception as e:
             logger.bind(tag=TAG).error(f"连接到 Mem0ai 服务时发生错误: {str(e)}")
             logger.bind(tag=TAG).error(f"详细错误: {traceback.format_exc()}")
-            self.use_mem0 = False
+
+    def init_memory(self, device_id: str, llm: Any) -> None:
+        """初始化记忆"""
+        self.role_id = device_id
+        self.llm = llm
+        self.current_user_id = device_id  # 使用设备ID作为初始用户ID
+        self.user_id = device_id  # 同步设置 user_id
+        logger.bind(tag=TAG).info(f"初始化记忆 | 设备ID: {device_id} | 当前用户ID: {self.current_user_id}")
+
+    def set_current_user(self, user_id: str) -> None:
+        """设置当前用户ID"""
+        self.current_user_id = user_id
+        self.role_id = user_id
+        self.user_id = user_id  # 同步设置 user_id
+        logger.bind(tag=TAG).info(f"设置当前用户 | 用户ID: {user_id}")
 
     async def save_memory(self, msgs):
-        if not self.use_mem0:
-            return None
-        if len(msgs) < 2:
+        if not self.use_mem0 or len(msgs) < 2:
             return None
         
         try:
@@ -37,7 +56,8 @@ class MemoryProvider(MemoryProviderBase):
                 {"role": message.role, "content": message.content}
                 for message in msgs if message.role != "system"
             ]
-            result = self.client.add(messages, user_id=self.role_id, output_format=self.api_version)
+            # 使用 current_user_id 作为 user_id
+            result = self.client.add(messages, user_id=self.current_user_id, output_format=self.api_version)
             logger.bind(tag=TAG).debug(f"Save memory result: {result}")
         except Exception as e:
             logger.bind(tag=TAG).error(f"保存记忆失败: {str(e)}")
@@ -47,9 +67,10 @@ class MemoryProvider(MemoryProviderBase):
         if not self.use_mem0:
             return ""
         try:
+            # 使用 current_user_id 作为 user_id
             results = self.client.search(
                 query,
-                user_id=self.role_id,
+                user_id=self.current_user_id,
                 output_format=self.api_version
             )
             if not results or 'results' not in results:

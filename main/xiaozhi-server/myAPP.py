@@ -16,9 +16,6 @@ class myAPP(QWidget, Ui_Form):
         super(myAPP, self).__init__()  #初始化父类
         self.setupUi(self)
 
-        # 确保tmp目录存在
-        os.makedirs('tmp', exist_ok=True)
-
         self.pushButton_2.clicked.connect(self.register_oepnaudio_pubutton_clicked)
         self.pushButton.clicked.connect(self.register_record_pubutton_clicked)
         self.pushButton_7.clicked.connect(self.register_pubutton_clicked)
@@ -54,7 +51,7 @@ class myAPP(QWidget, Ui_Form):
 
     def get_speaker_name(self):
         self.speaker_name = self.lineEdit_5.text()
-        if self.speaker_name == '':
+        if self.speaker_name is '':
             self.speaker_name = '未命名'
 
     def set_register_recorder_mode(self, cnt):

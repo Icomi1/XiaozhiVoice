@@ -19,8 +19,26 @@ from core.handle.intentHandler import Action, get_functions, handle_llm_function
 from config.private_config import PrivateConfig
 from core.auth import AuthMiddleware, AuthenticationError
 from core.utils.auth_code_gen import AuthCodeGenerator
+import sys
 
 TAG = __name__
+
+# 获取当前文件的目录
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# 获取项目根目录（xiaozhi-server）
+project_root = os.path.dirname(os.path.dirname(current_dir))
+# 将项目根目录添加到系统路径
+sys.path.insert(0, project_root)
+
+try:
+    from emotion_analysis import analyze_single_sentence
+    print(f"Successfully imported emotion_analysis from {project_root}")
+except ImportError as e:
+    print(f"Warning: Failed to import emotion_analysis: {e}")
+    print(f"Current directory: {current_dir}")
+    print(f"Project root: {project_root}")
+    print(f"Python path: {sys.path}")
+    analyze_single_sentence = None
 
 
 class TTSException(RuntimeError):
@@ -475,6 +493,16 @@ class ConnectionHandler:
     def recode_first_last_text(self, text, text_index=0):
         if self.tts_first_text_index == -1:
             self.logger.bind(tag=TAG).info(f"大模型说出第一句话: {text}")
+            # 进行情感分析
+            if analyze_single_sentence is not None:
+                try:
+                    sentiment_result = analyze_single_sentence(text)
+                    self.logger.bind(tag=TAG).info(f"情感分析结果: 文本='{sentiment_result['text']}', 情感值={sentiment_result['sentiment_value']:.2f}, 情感类别='{sentiment_result['sentiment_category']}', 数值标签={sentiment_result['numerical_value']}")
+                except Exception as e:
+                    self.logger.bind(tag=TAG).error(f"情感分析失败: {str(e)}")
+                    self.logger.bind(tag=TAG).error(f"错误详情: {traceback.format_exc()}")
+            else:
+                self.logger.bind(tag=TAG).warning("情感分析模块未正确加载")
             self.tts_first_text_index = text_index
         self.tts_last_text_index = text_index
 

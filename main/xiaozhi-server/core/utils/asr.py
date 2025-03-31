@@ -19,6 +19,12 @@ def create_instance(class_name: str, *args, **kwargs) -> ASRProviderBase:
         lib_name = f'core.providers.asr.{class_name}'
         if lib_name not in sys.modules:
             sys.modules[lib_name] = importlib.import_module(f'{lib_name}')
+        
+        # 从全局获取 memory_provider
+        from core.providers.memory.memory import memory_provider
+        if memory_provider:
+            kwargs['memory_provider'] = memory_provider
+            
         return sys.modules[lib_name].ASRProvider(*args, **kwargs)
 
     raise ValueError(f"不支持的ASR类型: {class_name}，请检查该配置的type是否设置正确")
